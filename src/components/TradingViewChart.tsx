@@ -6,29 +6,34 @@ interface Props {
   initialSymbol?: string;
 }
 
-// Define the TradingViewWidget type (basic placeholder, you can extend if needed)
-type TradingViewWidget = {
-  remove: () => void;
-  onChartReady: (callback: () => void) => void;
-  chart: () => {
-    onSymbolChanged: () => {
-      subscribe: (param: null, callback: (symbolFull: string) => void) => void;
-    };
-  };
-};
+interface TradingViewWidget {
+  container_id: string;
+  autosize: boolean;
+  symbol: string;
+  interval: string;
+  timezone: string;
+  theme: string;
+  style: string;
+  locale: string;
+  toolbar_bg: string;
+  enable_publishing: boolean;
+  allow_symbol_change: boolean;
+  save_image: boolean;
+  studies: string[];
+  overrides: Record<string, unknown>;
+  disabled_features: string[];
+}
 
-export default function TradingViewChart({
-  setSymbol,
-  initialSymbol = "BTCUSDT",
-}: Props) {
+export default function TradingViewChart({ setSymbol, initialSymbol = "BTCUSDT" }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const widgetRef = useRef<TradingViewWidget | null>(null);
 
-  // Cleanup on unmount
+  // Cleanup function
   useEffect(() => {
     return () => {
       if (widgetRef.current) {
+        // @ts-expect-error TradingView widget has remove method
         widgetRef.current.remove();
         widgetRef.current = null;
       }
@@ -43,9 +48,9 @@ export default function TradingViewChart({
 
     script.onload = () => {
       setIsScriptLoaded(true);
-
-      // @ts-expect-error TradingView is a global variable
-      widgetRef.current = new TradingView.widget({
+      
+      // @ts-expect-error TradingView is loaded from external script
+      widgetRef.current = new window.TradingView.widget({
         container_id: "tradingview-container",
         autosize: true,
         symbol: `BINANCE:${initialSymbol}`,
@@ -61,7 +66,7 @@ export default function TradingViewChart({
         studies: [
           "RSI@tv-basicstudies",
           "MACD@tv-basicstudies",
-          "Volume@tv-basicstudies",
+          "Volume@tv-basicstudies"
         ],
         overrides: {
           "paneProperties.background": "#0f172a",
@@ -71,23 +76,33 @@ export default function TradingViewChart({
         disabled_features: [
           "header_fullscreen_button",
           "header_compare",
-          "header_screenshot",
+          "header_screenshot"
         ],
       });
 
+      // Modern symbol change detection
       const interval = setInterval(() => {
-        // @ts-expect-error TradingView is a global variable
-        if (window.TradingView && widgetRef.current) {
-          widgetRef.current.onChartReady(() => {
-            widgetRef.current?.chart().onSymbolChanged().subscribe(null, (symbolFull: string) => {
-              const symbolParts = symbolFull.split(":");
-              if (symbolParts.length > 1) {
-                const newSymbol = symbolParts[1];
-                setSymbol(newSymbol);
-              }
+        try {
+          // @ts-expect-error TradingView is loaded from external script
+          if (window.TradingView && widgetRef.current) {
+            // @ts-expect-error TradingView widget methods
+            widgetRef.current.onChartReady(() => {
+              // @ts-expect-error TradingView widget methods
+              widgetRef.current.chart().onSymbolChanged().subscribe(
+                null,
+                (symbolFull: string) => {
+                  const symbolParts = symbolFull.split(':');
+                  if (symbolParts.length > 1) {
+                    const newSymbol = symbolParts[1];
+                    setSymbol(newSymbol);
+                  }
+                }
+              );
+              clearInterval(interval);
             });
-            clearInterval(interval);
-          });
+          }
+        } catch {
+          console.log("Waiting for chart ready...");
         }
       }, 500);
     };
@@ -100,6 +115,7 @@ export default function TradingViewChart({
 
     return () => {
       if (widgetRef.current) {
+        // @ts-expect-error TradingView widget has remove method
         widgetRef.current.remove();
         widgetRef.current = null;
       }
@@ -108,11 +124,13 @@ export default function TradingViewChart({
 
   return (
     <div className="w-full border border-gray-800 rounded-xl shadow-lg overflow-hidden">
-      <div
-        id="tradingview-container"
+      <div 
+        id="tradingview-container" 
         ref={containerRef}
         className="h-[500px]"
       />
+      
+      {/* Loading state */}
       {!isScriptLoaded && (
         <div className="h-[500px] flex items-center justify-center bg-gray-900">
           <div className="text-center">
