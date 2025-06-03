@@ -127,7 +127,7 @@ export default function Home() {
             </button>
             <GiTrade className="text-teal-400 text-xl sm:text-2xl" />
             <h1 className="font-bold text-lg sm:text-xl bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
-              AI Crypto Trader Pro
+              AI Crypto Analysis Agent
             </h1>
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
